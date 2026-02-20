@@ -1,5 +1,5 @@
 from telebot import types, TeleBot
-from telebot.callback_data import CallbackData, CallbackDataFilter
+from telebot.util import quick_markup
 
 from pole import *
 from database import GameDatabase
@@ -13,20 +13,10 @@ db = GameDatabase()
 
 CURRENT_GAMES = {}
 
-dictionaries_factory = CallbackData('dict_name', prefix="dict")
-def dictionaries_keyboard():
-  return types.InlineKeyboardMarkup(
-        keyboard=[
-            [
-                types.InlineKeyboardButton(
-                    text=INI_DICTIONARIES[d]["visible_name"],
-                    callback_data=dictionaries_factory.new(dict_name=d)
-                )
-            ]
-            for d in INI_DICTIONARIES
-        ],
-        row_width=2
-    )
+
+dictionary_markup = quick_markup({
+    INI_DICTIONARIES[d]["visible_name"]: {'callback_data': d} for d in INI_DICTIONARIES
+}, row_width=2)
 
 
 @bot.message_handler(commands=["top"])
@@ -43,12 +33,13 @@ def start_game_handler(message: types.Message):
   '''
   Начало игры, отзывается на /start и /play
   '''
-  bot.send_message(message.chat.id, text=f"Начало игры!\n\nВыберите тему", reply_markup=dictionaries_keyboard())
+  bot.send_message(message.chat.id, text=f"Начало игры!\n\nВыберите тему", reply_markup=dictionary_markup)
 
 @bot.callback_query_handler(func=None)
 def dictionary_callback(call: types.CallbackQuery):
-  callback_data: dict = dictionaries_factory.parse(callback_data=call.data)
-  game = PoleGame(callback_data['dict_name'])
+  if call.data not in INI_DICTIONARIES:
+    pass # логгер + обработка ошибки
+  game = PoleGame(call.data)
   CURRENT_GAMES[call.message.chat.id] = game
   bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Начало игры!\n\n{game.print_word()}\n\nТема: {game.theme}")
 
