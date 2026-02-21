@@ -13,7 +13,7 @@ db = GameDatabase()
 
 CURRENT_GAMES = {}
 
-
+# Генератор клавиатуры меню выбора темы
 dictionary_markup = quick_markup({
     INI_DICTIONARIES[d]["visible_name"]: {'callback_data': d} for d in INI_DICTIONARIES
 }, row_width=2)
@@ -35,10 +35,8 @@ def start_game_handler(message: types.Message):
   '''
   bot.send_message(message.chat.id, text=f"Начало игры!\n\nВыберите тему", reply_markup=dictionary_markup)
 
-@bot.callback_query_handler(func=None)
+@bot.callback_query_handler(func=lambda call: call.data in INI_DICTIONARIES)
 def dictionary_callback(call: types.CallbackQuery):
-  if call.data not in INI_DICTIONARIES:
-    pass # логгер + обработка ошибки
   game = PoleGame(call.data)
   CURRENT_GAMES[call.message.chat.id] = game
   bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Начало игры!\n\n{game.print_word()}\n\nТема: {game.theme}")
