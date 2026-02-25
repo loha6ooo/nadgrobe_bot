@@ -8,7 +8,7 @@ import configparser
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-bot = TeleBot(config["Telegram"]["TOKEN"])
+bot = TeleBot(config["Telegram"]["TOKEN"], num_threads=1, skip_pending=True)
 db = GameDatabase()
 
 CURRENT_GAMES = {}
