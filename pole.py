@@ -16,7 +16,8 @@ for d in INI_DICTIONARIES:
 
 class PoleGame():
   word: str
-  guessedLetters: list[str]
+  wordSet: set
+  guessedLetters: set
   end: bool
   theme: str
 
@@ -24,18 +25,23 @@ class PoleGame():
     if dict_name not in DICTIONARIES:
       pass # логгер + обработка ошибок
     self.word = random.choice(DICTIONARIES[dict_name])
-    self.guessedLetters = []
+    self.wordSet = set(self.word)
+    self.guessedLetters = set()
     self.end = False
     self.theme = INI_DICTIONARIES[dict_name]["visible_name"]
 
-  def check_letter(self, letter: str) -> bool:
+  def check_letter(self, letter: str) -> tuple[bool, bool]:
+    is_in_word = False
+    is_new = False
     if letter in self.word:
-      self.guessedLetters.append(letter)
-      if len(self.word) == len(self.guessedLetters):
+      is_in_word = True
+      if letter in self.guessedLetters:
+        is_new = True
+      self.guessedLetters.add(letter)
+      if len(self.wordSet) == len(self.guessedLetters):
         self.end = True
-      return True
-    else:
-      return False
+    return is_in_word, is_new
+
   
   def check_word(self, word: str) -> bool:
     if str.lower(word)==str.lower(self.word):

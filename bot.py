@@ -19,6 +19,13 @@ dictionary_markup = quick_markup({
 }, row_width=2)
 
 
+def reply_to_message_chat(message: types.Message, text: str):
+  '''
+  Отправляет сообщение в тот же чат, откуда пришло сообщение
+  '''
+  bot.send_message(chat_id=message.chat.id, message_thread_id=message.message_thread_id, text=text)
+
+
 @bot.message_handler(commands=["top"])
 def top_handler(message: types.Message):
   '''
@@ -33,7 +40,7 @@ def start_game_handler(message: types.Message):
   '''
   Начало игры, отзывается на /start и /play
   '''
-  bot.send_message(message.chat.id, text=f"Начало игры!\n\nВыберите тему", reply_markup=dictionary_markup)
+  bot.send_message(message.chat.id, message_thread_id=message.message_thread_id, text=f"Начало игры!\n\nВыберите тему", reply_markup=dictionary_markup)
 
 @bot.callback_query_handler(func=lambda call: call.data in INI_DICTIONARIES)
 def dictionary_callback(call: types.CallbackQuery):
@@ -51,20 +58,31 @@ def process_game_handler(message: types.Message):
     game = CURRENT_GAMES[message.chat.id]
   else:
     return
+  
   if len(message.text) == 1:
-    if game.check_letter(str.lower(message.text)) and not game.end:
-      bot.send_message(message.chat.id, f"Буква {str.upper(message.text)} есть в слове!\n\n+1 очко\n\n{str.upper(game.print_word())}\n\nТема: {game.theme}")
-      if str.lower(message.text) not in game.guessedLetters: db.change_points(message.from_user.username, message.from_user.id, message.chat.id, 1)
-    elif not game.check_letter(str.lower(message.text)):
-      bot.send_message(message.chat.id, f"Буквы {str.upper(message.text)} нет в слове!\n\n-1 очко\n\n{str.upper(game.print_word())}\n\nТема: {game.theme}")
+    is_in_word, is_new = game.check_letter(str.lower(message.text))
+    if is_in_word and not game.end:
+      if is_new:
+        reply_text = f"Буква {str.upper(message.text)} есть в слове!\n\n+1 очко\n\n{str.upper(game.print_word())}\n\nТема: {game.theme}"
+        db.change_points(message.from_user.username, message.from_user.id, message.chat.id, 1)
+      else:
+        reply_text = f"Буква {str.upper(message.text)} есть в слове!\n\n{str.upper(game.print_word())}\n\nТема: {game.theme}"
+      reply_to_message_chat(message, reply_text)
+    elif not is_in_word:
+      reply_text = f"Буквы {str.upper(message.text)} нет в слове!\n\n-1 очко\n\n{str.upper(game.print_word())}\n\nТема: {game.theme}"
+      reply_to_message_chat(message, reply_text)
       db.change_points(message.from_user.username, message.from_user.id, message.chat.id, -1)
+
   elif len(message.text) > 1:
     if (len(str.split(message.text)) == len(str.split(game.word))) and (len(message.text) == len(game.word)):
       if not game.check_word(str.lower(message.text)):
-        bot.send_message(message.chat.id, f"Слово {str.upper(message.text)} неверное!\n\n-2 очка\n\n{str.upper(game.print_word())}\n\nТема: {game.theme}")
+        reply_text = f"Слово {str.upper(message.text)} неверное!\n\n-2 очка\n\n{str.upper(game.print_word())}\n\nТема: {game.theme}"
+        reply_to_message_chat(message, reply_text)
         db.change_points(message.from_user.username, message.from_user.id, message.chat.id, -2)
+
   if game.end:
-    bot.send_message(message.chat.id, f"Конец игры!\n\nЗагаданное слово: {str.upper(game.print_word())}\n\n+15 очков @{message.from_user.username}!")
+    reply_text = f"Конец игры!\n\nЗагаданное слово: {str.upper(game.print_word())}\n\n+15 очков @{message.from_user.username}!"
+    reply_to_message_chat(message, reply_text)
     db.change_points(message.from_user.username, message.from_user.id, message.chat.id, 15)
     del CURRENT_GAMES[message.chat.id]
 
